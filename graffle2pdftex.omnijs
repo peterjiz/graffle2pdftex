@@ -1,0 +1,421 @@
+/*{
+    "author": "Peter El Jiz",
+    "targets": ["omnigraffle"],
+    "type": "action",
+    "identifier": "com.peterjiz.PDFTex",
+    "version": "0.1",
+    "description": "Automates the process of creating PDF and PDF_Tex files from two OmniGraffle documents.",
+    "label": "Export to Pdf_Tex",
+    "mediumLabel": "Export to Pdf_Tex",
+    "longLabel": "Export to Pdf_Tex",
+    "paletteLabel": "Export to Pdf_Tex",
+}*/
+
+// for every object of shape text
+// if fill color is null -> keep looping through parent until you get a fill color
+// set textColor to fillColor found
+
+//Starts off at a root node with a passed-down fillColor
+//If the current node has a fillColor -> set new_fillColor to current node's fillColor
+//If the current node does not have a fillColor -> set new_fillColor to passed-down fillColor
+//If the current node has children
+//      -> Get the last child node (last/background node)
+//      -> If the last child node has a fillColor -> set new_fillColor to last child node's fillColor
+//      -> For every child node, recurse
+//If the current node does not have children and is a text object
+//      -> Update the text variable (to get rid of MathLatex/Images)
+//      -> Set the text color to new_fillColor
+function stripTextColor(obj, fillColor, text) {
+	if(typeof obj.fillColor  === 'undefined' || obj.fillColor  === null){
+		new_fillColor = fillColor
+	} else {
+		new_fillColor = obj.fillColor
+	}
+
+	if(typeof obj.graphics === 'undefined'){
+		//stop recursion
+		if(typeof obj.textColor === 'undefined' || obj.textColor === null){
+		} else {
+
+			if(typeof fillColor === 'undefined' || fillColor === null){
+			} else {
+				obj.text = obj.text
+				obj.textColor = new_fillColor
+
+				if(typeof text  === 'undefined' || text  === null){}
+				else {
+					obj.text = text
+				}
+
+			}
+		}
+
+	} else {
+		// continue recursion
+		lastElement = obj.graphics.at(-1)
+		lastElementFillColor = lastElement.fillColor
+		if(typeof lastElementFillColor === 'undefined' || lastElementFillColor === null){
+		} else {
+			new_fillColor = lastElementFillColor
+		}
+
+		for (graphic of obj.graphics) {
+			stripTextColor(graphic, new_fillColor, text)
+		}
+
+	}
+}
+
+function containsString(mainString, searchString) {
+	return mainString.toLowerCase().includes(searchString.toLowerCase());
+}
+
+function extractExtremitiesCoordinates(obj) {
+	var minimumX = Infinity;
+	var minimumY = Infinity;
+	var maximumX = -Infinity;
+	var maximumY = -Infinity;
+
+	function traverse(innerObj) {
+		if (innerObj.geometry) {
+			var x = innerObj.geometry.x;
+			var y = innerObj.geometry.y;
+
+			if (x < minimumX) {
+				minimumX = x;
+			}
+
+			if (y < minimumY) {
+				minimumY = y;
+			}
+
+			if (x > maximumX) {
+				maximumX = x;
+			}
+
+			if (y > maximumY) {
+				maximumY = y;
+			}
+
+		}
+
+		if (innerObj.graphics) {
+			// Recurse into child graphics
+			for (var child of innerObj.graphics) {
+				traverse(child);
+			}
+		}
+	}
+
+	traverse(obj);
+
+	return {
+		minimumX: minimumX,
+		minimumY: minimumY,
+		maximumX: maximumX,
+		maximumY: maximumY,
+	};
+}
+
+function extractCanvasSize(obj) {
+	return {height: obj.size.height, width: obj.size.width}
+}
+
+
+function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
+	var result = "";
+	var minimumX = extremities.minimumX
+	var minimumY = extremities.minimumY
+	var maximumX = extremities.maximumX
+	var maximumY = extremities.maximumY
+	var width = size.width
+	var height = size.height
+
+	// console.log(minimumY);
+	// console.log(maximumY);
+	// console.log(height - maximumY);
+	// console.log(height - minimumY);
+	// console.log(height - maximumY - minimumY);
+
+	if (obj.text && obj.text.trim() !== "") {
+		// var objText = obj.text + "";
+		//
+		// // Get the X and Y coordinates
+		// var textGeometryX = obj.textGeometry.origin.x
+		// var textGeometryY = obj.textGeometry.origin.y
+		// var textGeometryWidth = obj.textGeometry.width
+		// var textGeometryHeight = obj.textGeometry.height
+		// // var textGeometryHeight = obj.geometry.height
+		//
+		// // Invert the Y coordinate
+		// var invertedY = height - textGeometryY;
+		//
+		// // Handle text rotation
+		// var rotation = obj.rotation || 0; // assuming you can get the rotation
+		// var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
+		// // var useFontSize = false
+		// var useFontSize = true
+		//
+		// // Get the X and Y coordinates
+		// var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0
+		// var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8
+		// var x = ((textGeometryX - minimumX + xSpacingWidthRatio*textGeometryWidth) / width) * ratio;
+		// var y = ((invertedY + minimumY - ySpacingWidthRatio*textGeometryHeight) / height) * ratio * aspectratio;
+		//
+		//
+		// // Get the text color as RGB
+		// var color = obj.textColor;
+		// var fontName = obj.fontName;
+		// // Example: setting line height as 1.2 times the font size
+		// var fontSize = obj.textSize; // assuming you can get the font size from OmniGraffle
+		// var lineHeight = fontSize * 1.2; // you can adjust the multiplier based on your needs
+		// var alpha = color ? color.alpha : 1;
+		// var red = color ? color.red : 0;
+		// var green = color ? color.green : 0;
+		// var blue = color ? color.blue : 0;
+		// var rgbString = `${red},${green},${blue}`
+		//
+		// // Get font properties
+		// // var isBold = fontName && containsString(fontName, "bold") ? "\\textbf" : "";
+		// // var isItalic = fontName && containsString(fontName, "italic") ? "\\textit" : "";
+		// var isBold = ""
+		// var isItalic = ""
+		//
+		// // var objTextLines = objText.split("\n"); // Splitting the text into lines
+		// // for (line of objTextLines) {
+		// //     // Your existing logic to handle each line of text
+		// //
+		// //     // Make sure to update the 'y' value for each line, depending on the line height and the direction in which you want the text to proceed
+		// //     // Then use this line height when updating the 'y' coordinate for each line
+		// //     // innery -= lineHeight * ratio; // considering the ratio as previously defined
+		// //
+		// //     // Continue with the rest of your existing code that processes the text
+		// //     // Remember to use 'line' instead of 'objText' within this loop
+		// //     var command = "\\put(" + x + "," + innery + "){" + isBold + isItalic + "\\color[rgb]{" + rgbString + "}{" + line + "}}\n";
+		// //     result += command;
+		// // }
+		//
+		// // var command = "\\put(" + x + "," + y + "){" + isBold + isItalic + "\\color[rgb]{" + rgbString + "}{" + objText + "}}\n";
+		// // result += command;
+		//
+		// // Split text by newline and format as a tabular environment
+		// var lines = objText.split('\n');
+		// var tabularContent = lines.map(line => line.trim()).join("\\\\");
+		// var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
+		// var fontStringClosing = useFontSize == true ? "}" : "";
+		//
+		// // Create the LaTeX \put command
+		// var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{\\lineheight{${lineHeight}}\\smash{${fontStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
+		// result += command;
+
+
+		var objText = obj.text + "";
+		var textGeometryX = obj.textGeometry.origin.x;
+		var textGeometryY = obj.textGeometry.origin.y;
+		var textGeometryWidth = obj.textGeometry.width;
+		var textGeometryHeight = obj.textGeometry.height;
+
+		// Invert the Y coordinate
+		var invertedY = height - textGeometryY;
+
+		// Handle text rotation
+		var rotation = obj.rotation || 0;
+		var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
+
+		var fontSize = obj.textSize; // assuming you can get the font size from OmniGraffle
+		var fontName = obj.fontName;
+		// var useFontSize = true;
+		var useFontSize = false;
+		var isBold = fontName && containsString(fontName, "bold");
+		var isItalic = fontName && containsString(fontName, "italic");
+		var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
+		var fontStringClosing = useFontSize == true ? "}" : "";
+		var boldStringOpening = isBold == true ? `\\textbf{` : "";
+		var boldStringClosing = isBold == true ? "}" : "";
+		var italicStringOpening = isItalic == true ? `\\textit{` : "";
+		var italicStringClosing = isItalic == true ? "}" : "";
+
+		var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0;
+		var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8;
+		var x = ((textGeometryX - minimumX + xSpacingWidthRatio * textGeometryWidth) / width) * ratio;
+		var y = ((invertedY + minimumY - ySpacingWidthRatio * textGeometryHeight) / height) * ratio * aspectratio;
+
+		var color = obj.textColor;
+		var lineHeight = fontSize * 1.2; // you can adjust the multiplier based on your needs
+		var alpha = color ? color.alpha : 1;
+		var red = color ? color.red : 0;
+		var green = color ? color.green : 0;
+		var blue = color ? color.blue : 0;
+		var rgbString = `${red},${green},${blue}`;
+
+		var lines = objText.split('\n');
+		var tabularContent = lines.map(line => line.trim()).join("\\\\");
+
+		// Create the LaTeX \put command
+		var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{\\lineheight{${lineHeight}}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
+		result += command;
+
+	}
+
+	if (obj.graphics) {
+		// Recurse into child graphics
+		for (child of obj.graphics) {
+			result += extractTextPositions(child, extremities, size, aspectratio, ratio);
+		}
+	}
+
+	return result;
+}
+
+function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio){
+	var canvasSize = extractCanvasSize(canvas)
+	var canvasExtremities = extractExtremitiesCoordinates(canvas)
+	var canvasSizeLatex = {height: canvasSize.height*ratio, width: canvasSize.width*ratio}
+	var aspectratio = canvasSizeLatex.height/canvasSizeLatex.width
+	extractedText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio);
+
+	// 2. Export the figure without text to a PDF
+	// Loops over all canvases and strips text color for each of the canvases
+	stripTextColor(canvas, Color.RGB(1,1,1,1))
+
+	if(typeof canvas_name === 'undefined' || canvas_name === null){
+		var pdfFilename_c = pdfFilename_
+		var pdfTexFilename_c = pdfTexFilename_
+	} else {
+		var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
+		var pdfTexFilename_c = pdfTexFilename_.replace(".pdf_tex.tex", `_${canvas_name}.pdf_tex.tex`)
+	}
+	var PDFwrapperPromise = document.makeFileWrapper(pdfFilename_c, "com.adobe.pdf")
+
+	// 3. Create a new .pdf_tex file
+	var prependText = `
+%% Creator: Peter El-Jiz
+%% OmniGraffle -> PDF_Tex adapted from
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file '{${pdfFilename_c}}' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \\input{<filename>.pdf_tex}
+%%  instead of
+%%   \\includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \\def\\svgwidth{<desired width>}
+%%   \\input{<filename>.pdf_tex}
+%%  instead of
+%%   \\includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the \`import' package (which may need to be
+%% installed) using
+%%   \\usepackage{import}
+%% in the preamble, and then including the image with
+%%   \\import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \\graphicspath{{<path to file>/}}
+%%
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\\begingroup%
+  \\makeatletter%
+  \\providecommand\\color[2][]{%
+    \\errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \\renewcommand\\color[2][]{}%
+  }%
+  \\providecommand\\transparent[1]{%
+    \\errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \\renewcommand\\transparent[1]{}%
+  }%
+  \\providecommand\\rotatebox[2]{#2}%
+  \\newcommand*\\fsize{\\dimexpr\\f@size pt\\relax}%
+  \\newcommand*\\lineheight[1]{\\fontsize{\\fsize}{#1\\fsize}\\selectfont}%
+  \\ifx\\svgwidth\\undefined%
+    \\setlength{\\unitlength}{${canvasSizeLatex.width}bp}%
+    \\ifx\\svgscale\\undefined%
+      \\relax%
+    \\else%
+      \\setlength{\\unitlength}{\\unitlength * \\real{\\svgscale}}%
+    \\fi%
+  \\else%
+    \\setlength{\\unitlength}{\\svgwidth}%
+  \\fi%
+  \\global\\let\\svgwidth\\undefined%
+  \\global\\let\\svgscale\\undefined%
+  \\makeatother%
+  \\begin{picture}(1,${aspectratio})%
+    \\lineheight{1}%
+    \\setlength\\tabcolsep{0pt}%
+`
+	var appendText = `
+  \\end{picture}%
+\\endgroup%
+`
+	// var includeGraphicsCommand = `\\includegraphics{${pdfFilename}}\n`;
+	var includeGraphicsCommand = `\\put(0,0){\\includegraphics[width=\\unitlength,page=1]{${pdfFilename_}/${pdfFilename_c}}}%\n`;
+	var pdfTexContent = prependText + includeGraphicsCommand + extractedText + appendText;
+	var pdfTexWrapper = FileWrapper.withContents(pdfTexFilename_c, Data.fromString(pdfTexContent));
+
+	out = {
+		PDFwrapperPromise: PDFwrapperPromise,
+		pdfTexWrapper: pdfTexWrapper,
+	}
+
+	return out;
+
+}
+
+(() => {
+	var action = new PlugIn.Action(async function(selection) {
+		var fileName = document.name;
+		var pdfFilename_ = fileName.toString().replace(/\.graffle$/, "");
+		var pdfTexFilename_ = fileName.toString().replace(/\.graffle$/, ".pdf_tex.tex");
+
+		// As LaTex uses big points, we have to multiply the dimensions by the ratio: 72.27/72
+		var ratio = 72.27/72
+
+		// 1. Extract Text Positions from the document with text
+		var extractedText = "";
+		// Iterate through the canvases and extract text positions
+		var promises = Array()
+
+		var canvasesLen = canvases.length;
+		var canvas = document.windows[0].selection.canvas
+		var canvas_name = null
+		if (canvasesLen > 1) {
+			canvas_name = canvas.name
+		}
+
+		if(typeof canvas_name === 'undefined' || canvas_name === null){
+			var pdfFilename_c = pdfFilename_
+		} else {
+			var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
+		}
+
+		output = processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio)
+		promises.push(output.PDFwrapperPromise)
+		promises.push(output.pdfTexWrapper)
+
+		Promise.all(promises).then(fileWrappers => {
+			// Create and Show File Saver
+			var filesaver = new FileSaver()
+			filesaver.types = [new FileType("public.folder"), new FileType("public.txt"), FileType.pdf]
+			var fldrwrapper = FileWrapper.withChildren(`${pdfFilename_c}`, fileWrappers)
+			var fileSaverPromise = filesaver.show(fldrwrapper)
+
+			// Process File Saver Result
+			fileSaverPromise.then(urlObj => {
+				console.log(urlObj.string)
+			})
+
+			fileSaverPromise.catch(err => {
+				console.log(err.message)
+			})
+
+		}).catch(err => {
+			console.log("Error", err.message)
+		})
+
+});
+
+	return action;
+})();

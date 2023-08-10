@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+import logging
+import optparse
+import os
+import pathlib
+import re
+import shutil
+import sys
+import tempfile
+
+import osascript
+
+from omnigraffle import OmniGraffle, OmniGraffleSchema
+
+# https://stackoverflow.com/questions/4427542/how-to-do-sed-like-text-replace-with-python
+def sed_inplace(filename, pattern, repl):
+    '''
+    Perform the pure-Python equivalent of in-place `sed` substitution: e.g.,
+    `sed -i -e 's/'${pattern}'/'${repl}' "${filename}"`.
+    '''
+    # For efficiency, precompile the passed regular expression.
+    pattern_compiled = re.compile(pattern)
+
+    # For portability, NamedTemporaryFile() defaults to mode "w+b" (i.e., binary
+    # writing with updating). This is usually a good thing. In this case,
+    # however, binary writing imposes non-trivial encoding constraints trivially
+    # resolved by switching to text writing. Let's do that.
+    with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_file:
+        with open(filename) as src_file:
+            for line in src_file:
+                tmp_file.write(pattern_compiled.sub(repl, line))
+
+    # Overwrite the original file with the munged temporary file in a
+    # manner preserving file attributes (e.g., permissions).
+    shutil.copystat(filename, tmp_file.name)
+    shutil.move(tmp_file.name, filename)
+
+
+# https://github.com/fikovnik/omnigraffle-export
+def export(source, debug=False):
+    # logging
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    # check source
+    if not os.access(source, os.R_OK):
+        print("File: %s could not be opened for reading" % source, file=sys.stderr)
+        sys.exit(1)
+
+    filepath = pathlib.Path(source)
+    destination = filepath.parent / filepath.stem
+    destination.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tmpFilepath = pathlib.Path(temp_dir) / filepath.name
+        tmpGrafflePath = pathlib.Path(temp_dir) / filepath.stem
+        tmpGrafflePath.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(str(filepath), str(tmpFilepath))
+        og = OmniGraffle()
+        schema = og.open(str(tmpFilepath))
+        ogscriptPath = "graffle2pdftex.applescript"
+        osascript.osascript(str(ogscriptPath))
+
+        for file in tmpGrafflePath.rglob('*.pdf*'):
+            shutil.copy(str(file), str(destination))
+
+
+def main():
+    usage = "Usage: %prog [options] <source> <target>"
+    parser = optparse.OptionParser(usage=usage)
+
+    parser.add_option('--debug', action='store_true', help='debug', dest='debug')
+    (options, args) = parser.parse_args()
+
+    if len(args) != 1:
+        parser.print_help()
+        sys.exit(1)
+    (source,) = args
+
+    export(source, options.debug)
+
+if __name__ == '__main__':
+    main()
