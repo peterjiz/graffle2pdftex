@@ -122,7 +122,7 @@ function extractCanvasSize(obj) {
 }
 
 
-function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
+function extractTextPositions(obj, extremities, size, aspectratio, ratio, mode) {
 	var result = "";
 	var minimumX = extremities.minimumX
 	var minimumY = extremities.minimumY
@@ -130,6 +130,7 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 	var maximumY = extremities.maximumY
 	var width = size.width
 	var height = size.height
+	var permil = 1000
 
 	if (obj.text && obj.text.trim() !== "") {
 		var objText = obj.text + "";
@@ -145,10 +146,17 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 		var rotation = obj.rotation || 0;
 		var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
 
+		var color = obj.textColor;
 		var fontSize = obj.textSize;
 		var fontName = obj.fontName;
 		var useFontSize = true;
 		// var useFontSize = false;
+
+		if (mode.toLowerCase() === "picture") {
+		} else if (mode.toLowerCase() === "overpic") {
+			useFontSize = false
+		}
+
 		var lineHeight = fontSize * 1.5 * ratio;
 		var isBold = fontName && containsString(fontName, "bold");
 		var isItalic = fontName && containsString(fontName, "italic");
@@ -162,10 +170,15 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 
 		var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0;
 		var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8;
+
 		var x = ((textGeometryX - minimumX + xSpacingWidthRatio * textGeometryWidth) / width) * ratio;
 		var y = ((invertedY + minimumY - ySpacingWidthRatio * textGeometryHeight) / height) * ratio * aspectratio;
 
-		var color = obj.textColor;
+		if (mode.toLowerCase() === "overpic") {
+			x = x * permil;
+			y = y * permil;
+		}
+
 		var alpha = color ? color.alpha : 1;
 		var red = color ? color.red : 0;
 		var green = color ? color.green : 0;
@@ -184,7 +197,7 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 	if (obj.graphics) {
 		// Recurse into child graphics
 		for (child of obj.graphics) {
-			result += extractTextPositions(child, extremities, size, aspectratio, ratio);
+			result += extractTextPositions(child, extremities, size, aspectratio, ratio, mode);
 		}
 	}
 
@@ -196,7 +209,8 @@ function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio
 	var canvasExtremities = extractExtremitiesCoordinates(canvas)
 	var canvasSizeLatex = {height: canvasSize.height*ratio, width: canvasSize.width*ratio}
 	var aspectratio = canvasSizeLatex.height/canvasSizeLatex.width
-	extractedText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio);
+	extractedPictureText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio, "picture");
+	extractedOverpicText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio, "overpic");
 
 	// 2. Export the figure without text to a PDF
 	// Loops over all canvases and strips text color for each of the canvases
@@ -212,7 +226,7 @@ function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio
 	var PDFwrapperPromise = document.makeFileWrapper(pdfFilename_c, "com.adobe.pdf")
 
 	// 3. Create a new .pdf_tex file
-	var prependText = `
+	var pdfTexPictureContent = `
 %% Creator: Peter El-Jiz
 %% OmniGraffle -> PDF_Tex adapted from
 %% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
@@ -269,15 +283,75 @@ function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio
   \\begin{picture}(1,${aspectratio})%
     \\lineheight{1}%
     \\setlength\\tabcolsep{0pt}%
-`
-	var appendText = `
+	\\put(0,0){\\includegraphics[width=\\unitlength,page=1]{${pdfFilename_}/${pdfFilename_c}}}%
+	${extractedPictureText}	
   \\end{picture}%
 \\endgroup%
 `
-	// var includeGraphicsCommand = `\\includegraphics{${pdfFilename}}\n`;
-	var includeGraphicsCommand = `\\put(0,0){\\includegraphics[width=\\unitlength,page=1]{${pdfFilename_}/${pdfFilename_c}}}%\n`;
-	var pdfTexContent = prependText + includeGraphicsCommand + extractedText + appendText;
-	var pdfTexWrapper = FileWrapper.withContents(pdfTexFilename_c, Data.fromString(pdfTexContent));
+
+	// 3. Create a new .pdf_tex file
+	var pdfTexOverpicContent = `
+%% Creator: Peter El-Jiz
+%% OmniGraffle -> PDF_Tex adapted from
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file '{${pdfFilename_c}}' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \\input{<filename>.pdf_tex}
+%%  instead of
+%%   \\includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \\def\\svgwidth{<desired width>}
+%%   \\input{<filename>.pdf_tex}
+%%  instead of
+%%   \\includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the \`import' package (which may need to be
+%% installed) using
+%%   \\usepackage{import}
+%% in the preamble, and then including the image with
+%%   \\import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \\graphicspath{{<path to file>/}}
+%%
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\\begingroup%
+  \\makeatletter%
+  \\providecommand\\color[2][]{%
+    \\errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \\renewcommand\\color[2][]{}%
+  }%
+  \\providecommand\\transparent[1]{%
+    \\errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \\renewcommand\\transparent[1]{}%
+  }%
+  \\providecommand\\rotatebox[2]{#2}%
+  \\newcommand*\\fsize{\\dimexpr\\f@size pt\\relax}%
+  \\newcommand*\\lineheight[1]{\\fontsize{\\fsize}{#1\\fsize}\\selectfont}%
+  \\ifx\\svgwidth\\undefined%
+    \\setlength{\\unitlength}{${canvasSizeLatex.width}bp}%
+    \\ifx\\svgscale\\undefined%
+      \\relax%
+    \\else%
+      \\setlength{\\unitlength}{\\unitlength * \\real{\\svgscale}}%
+    \\fi%
+  \\else%
+    \\setlength{\\unitlength}{\\svgwidth}%
+  \\fi%
+  \\global\\let\\svgwidth\\undefined%
+  \\global\\let\\svgscale\\undefined%
+  \\makeatother%
+  \\begin{overpic}[width=\\unitlength,permil,tics=100]{${pdfFilename_}/${pdfFilename_c}}}
+    \\lineheight{1}%
+    \\setlength\\tabcolsep{0pt}%
+	${extractedOverpicText}	
+  \\end{picture}%
+\\endgroup%
+`
+	var pdfTexWrapper = FileWrapper.withContents(pdfTexFilename_c, Data.fromString(pdfTexOverpicContent));
 
 	out = {
 		PDFwrapperPromise: PDFwrapperPromise,
