@@ -37,7 +37,7 @@ class CustomInstall(install):
 
 setup(
     name="graffle2pdftex",
-    version="1.0.0",
+    version="1.0.0.1",
     # packages=find_packages(include=['graffle2pdftex', 'graffle2pdftex.*']),
     include_package_data=True,
     packages=[*find_packages(include=["graffle2pdftex"])],

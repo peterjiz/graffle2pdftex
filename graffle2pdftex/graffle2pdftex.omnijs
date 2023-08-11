@@ -131,84 +131,7 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 	var width = size.width
 	var height = size.height
 
-	// console.log(minimumY);
-	// console.log(maximumY);
-	// console.log(height - maximumY);
-	// console.log(height - minimumY);
-	// console.log(height - maximumY - minimumY);
-
 	if (obj.text && obj.text.trim() !== "") {
-		// var objText = obj.text + "";
-		//
-		// // Get the X and Y coordinates
-		// var textGeometryX = obj.textGeometry.origin.x
-		// var textGeometryY = obj.textGeometry.origin.y
-		// var textGeometryWidth = obj.textGeometry.width
-		// var textGeometryHeight = obj.textGeometry.height
-		// // var textGeometryHeight = obj.geometry.height
-		//
-		// // Invert the Y coordinate
-		// var invertedY = height - textGeometryY;
-		//
-		// // Handle text rotation
-		// var rotation = obj.rotation || 0; // assuming you can get the rotation
-		// var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
-		// // var useFontSize = false
-		// var useFontSize = true
-		//
-		// // Get the X and Y coordinates
-		// var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0
-		// var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8
-		// var x = ((textGeometryX - minimumX + xSpacingWidthRatio*textGeometryWidth) / width) * ratio;
-		// var y = ((invertedY + minimumY - ySpacingWidthRatio*textGeometryHeight) / height) * ratio * aspectratio;
-		//
-		//
-		// // Get the text color as RGB
-		// var color = obj.textColor;
-		// var fontName = obj.fontName;
-		// // Example: setting line height as 1.2 times the font size
-		// var fontSize = obj.textSize; // assuming you can get the font size from OmniGraffle
-		// var lineHeight = fontSize * 1.2; // you can adjust the multiplier based on your needs
-		// var alpha = color ? color.alpha : 1;
-		// var red = color ? color.red : 0;
-		// var green = color ? color.green : 0;
-		// var blue = color ? color.blue : 0;
-		// var rgbString = `${red},${green},${blue}`
-		//
-		// // Get font properties
-		// // var isBold = fontName && containsString(fontName, "bold") ? "\\textbf" : "";
-		// // var isItalic = fontName && containsString(fontName, "italic") ? "\\textit" : "";
-		// var isBold = ""
-		// var isItalic = ""
-		//
-		// // var objTextLines = objText.split("\n"); // Splitting the text into lines
-		// // for (line of objTextLines) {
-		// //     // Your existing logic to handle each line of text
-		// //
-		// //     // Make sure to update the 'y' value for each line, depending on the line height and the direction in which you want the text to proceed
-		// //     // Then use this line height when updating the 'y' coordinate for each line
-		// //     // innery -= lineHeight * ratio; // considering the ratio as previously defined
-		// //
-		// //     // Continue with the rest of your existing code that processes the text
-		// //     // Remember to use 'line' instead of 'objText' within this loop
-		// //     var command = "\\put(" + x + "," + innery + "){" + isBold + isItalic + "\\color[rgb]{" + rgbString + "}{" + line + "}}\n";
-		// //     result += command;
-		// // }
-		//
-		// // var command = "\\put(" + x + "," + y + "){" + isBold + isItalic + "\\color[rgb]{" + rgbString + "}{" + objText + "}}\n";
-		// // result += command;
-		//
-		// // Split text by newline and format as a tabular environment
-		// var lines = objText.split('\n');
-		// var tabularContent = lines.map(line => line.trim()).join("\\\\");
-		// var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
-		// var fontStringClosing = useFontSize == true ? "}" : "";
-		//
-		// // Create the LaTeX \put command
-		// var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{\\lineheight{${lineHeight}}\\smash{${fontStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
-		// result += command;
-
-
 		var objText = obj.text + "";
 		var textGeometryX = obj.textGeometry.origin.x;
 		var textGeometryY = obj.textGeometry.origin.y;
@@ -222,10 +145,11 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 		var rotation = obj.rotation || 0;
 		var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
 
-		var fontSize = obj.textSize; // assuming you can get the font size from OmniGraffle
+		var fontSize = obj.textSize;
 		var fontName = obj.fontName;
-		// var useFontSize = true;
-		var useFontSize = false;
+		var useFontSize = true;
+		// var useFontSize = false;
+		var lineHeight = fontSize * 1.5 * ratio;
 		var isBold = fontName && containsString(fontName, "bold");
 		var isItalic = fontName && containsString(fontName, "italic");
 		var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
@@ -234,6 +158,7 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 		var boldStringClosing = isBold == true ? "}" : "";
 		var italicStringOpening = isItalic == true ? `\\textit{` : "";
 		var italicStringClosing = isItalic == true ? "}" : "";
+		var lineHeightLatex = useFontSize == true ? `\\lineheight{${lineHeight}}` : "";
 
 		var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0;
 		var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8;
@@ -241,7 +166,6 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 		var y = ((invertedY + minimumY - ySpacingWidthRatio * textGeometryHeight) / height) * ratio * aspectratio;
 
 		var color = obj.textColor;
-		var lineHeight = fontSize * 1.2; // you can adjust the multiplier based on your needs
 		var alpha = color ? color.alpha : 1;
 		var red = color ? color.red : 0;
 		var green = color ? color.green : 0;
@@ -252,7 +176,7 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio) {
 		var tabularContent = lines.map(line => line.trim()).join("\\\\");
 
 		// Create the LaTeX \put command
-		var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{\\lineheight{${lineHeight}}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
+		var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{${lineHeightLatex}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
 		result += command;
 
 	}
