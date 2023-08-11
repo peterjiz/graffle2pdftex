@@ -152,11 +152,6 @@ function extractTextPositions(obj, extremities, size, aspectratio, ratio, mode) 
 		var useFontSize = true;
 		// var useFontSize = false;
 
-		if (mode.toLowerCase() === "picture") {
-		} else if (mode.toLowerCase() === "overpic") {
-			useFontSize = false
-		}
-
 		var lineHeight = fontSize * 1.5 * ratio;
 		var isBold = fontName && containsString(fontName, "bold");
 		var isItalic = fontName && containsString(fontName, "italic");
