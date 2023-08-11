@@ -12,7 +12,7 @@ import tempfile
 import fitz
 import osascript
 
-from omnigraffle import OmniGraffle
+from graffle2pdftex.omnigraffle import OmniGraffle
 
 # graffle2pdftex_applescript = """
 # set delayMultiplier to 1
