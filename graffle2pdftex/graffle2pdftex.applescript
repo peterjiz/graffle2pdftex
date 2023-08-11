@@ -10,7 +10,6 @@ end if
 
 set launchdelay to omnigraffleDelay
 
---Interaction with Zotero-----------------------------------------------------------
 tell application "OmniGraffle"
 	activate
 end tell
