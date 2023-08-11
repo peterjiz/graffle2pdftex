@@ -3,8 +3,8 @@ import os
 import time
 
 import osascript as osascript
-
 from appscript import k as keywordwrapper, app, ApplicationNotFoundError
+
 
 # https://github.com/fikovnik/omnigraffle-export
 class OmniGraffleSchema(object):

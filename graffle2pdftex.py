@@ -11,56 +11,8 @@ import tempfile
 
 import fitz
 import osascript
-import pdfrw
 
 from omnigraffle import OmniGraffle
-
-#
-# def remove_text_from_pdf(input_pdf_path, output_pdf_path):
-#     # Open the PDF file
-#     document = fitz.open(input_pdf_path)
-#
-#     # Iterate through the pages
-#     for page_number in range(len(document)):
-#         page = document.load_page(page_number)
-#
-#         # Get the blocks on the page, where blocks contain various elements like text and images
-#         blocks = page.get_text("blocks")
-#
-#         # Iterate through the blocks and remove the text blocks
-#         for block in blocks:
-#             x0, y0, x1, y1, _, _, _ = block[:7]
-#             rectangle = fitz.Rect(x0, y0, x1, y1)
-#             page.add_redact_annot(rectangle) # Mark the text for redaction
-#
-#         # Apply redaction, effectively removing the text
-#         page.apply_redactions()
-#
-#     # Save the PDF with the text removed
-#     document.save(output_pdf_path)
-#
-# # def create_new_pdf_without_text(input_pdf_path, output_pdf_path):
-# #     # Open the input PDF
-# #     document = fitz.open(input_pdf_path)
-# #     # Create a new PDF to hold the non-text content
-# #     new_document = fitz.open()
-# #
-# #     # Iterate through each page of the input PDF
-# #     for page_number in range(len(document)):
-# #         page = document.load_page(page_number)
-# #         # Create a new page with the same dimensions as the original
-# #         new_page = new_document.new_page(width=page.rect.width, height=page.rect.height)
-# #
-# #         # Iterate through the page's display list (this includes text, images, etc.)
-# #         for item in page.get_displaylist().items():
-# #             # If the item's type is text, skip it
-# #             if item[0] == 1:
-# #                 continue
-# #             # Otherwise, add the item to the new page
-# #             new_page.insert_image(rect=item[-2], stream=item[-1])
-# #
-# #     # Save the new PDF (without text) to the output path
-# #     new_document.save(output_pdf_path)
 
 
 def redact_text_from_pdf(input_pdf_path, output_pdf_path):
@@ -91,21 +43,6 @@ def redact_text_from_pdf(input_pdf_path, output_pdf_path):
 
 
     document.save(output_pdf_path)
-
-# def test(input_pdf_path, output_pdf_path):
-#     # Read the PDF
-#     pdf = pdfrw.PdfReader(input_pdf_path)
-#
-#     # Iterate through the PDF's pages
-#     for page in pdf.pages:
-#         # Find all text objects
-#         text_objects = pdfrw.find_objects(page, "/Type", "/Font")
-#         for obj in text_objects:
-#             # Replace text content with an empty string
-#             obj.stream = ""
-#
-#     # Write the modified PDF
-#     pdfrw.PdfWriter().write(output_pdf_path, pdf)
 
 # https://stackoverflow.com/questions/4427542/how-to-do-sed-like-text-replace-with-python
 def sed_inplace(filename, pattern, repl):
@@ -161,10 +98,6 @@ def export(source, debug=False):
         #     shutil.copy(str(file), str(destination))
 
         for file in tmpGrafflePath.rglob('*.pdf'):
-            # shutil.copy(str(file), str(destination))
-            # remove_text_from_pdf(str(file), str(destination / file.name))
-            # test(str(file), str(destination / file.name))
-            # create_new_pdf_without_text(str(file), str(destination / file.name))
             redact_text_from_pdf(str(file), str(destination / file.name))
 
         for file in tmpGrafflePath.rglob('*.pdf_tex*'):
