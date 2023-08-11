@@ -4,7 +4,10 @@ import shutil
 
 from setuptools import setup, find_packages
 from setuptools.command.install import install
+# from pkg_resources import resource_filename
 
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 class CustomInstall(install):
     def run(self):
@@ -31,11 +34,11 @@ class CustomInstall(install):
         except Exception:
             pass
 
-
 setup(
     name="graffle2pdftex",
     version="1.0.0",
-    packages=find_packages(include=['graffle2pdftex', 'graffle2pdftex.*']),
+    # packages=find_packages(include=['graffle2pdftex', 'graffle2pdftex.*']),
+    packages=find_packages(),
     scripts=['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'],
     # data_files=['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'],
     cmdclass={
@@ -46,8 +49,7 @@ setup(
     author="Peter El-Jiz",
     author_email="peter.eljiz@gmail.com",
     description="A command line utility that exports omnigraffle canvases files to pdf_tex.",
-    long_description=open("README.md").read(),
-    license="http://www.opensource.org/licenses/mit-license.php",
+    long_description=read("README.md"),
     keywords="graffle2pdftex",
     url="https://github.com/peterjiz/graffle2pdftex",
     classifiers=[
@@ -63,5 +65,5 @@ setup(
             'graffle2pdftex = graffle2pdftex.graffle2pdftex:main',
         ],
     },
-    zip_safe=False,
+    zip_safe=True,
 )
