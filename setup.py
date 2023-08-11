@@ -21,26 +21,28 @@ class CustomInstall(install):
         home_directory = pathlib.Path.home()
 
         # Get the location of the installed package
-        # scriptsPathLocal = pathlib.Path(os.path.abspath(__file__)).parent / "graffle2pdftex"
-        scriptsPath = pathlib.Path(self.install_scripts)
+        # localPackageInstallerPath = pathlib.Path(os.path.abspath(__file__)).parent / "graffle2pdftex"
+        # binPath = pathlib.Path(self.install_scripts)
+        sitePackagesPath = pathlib.Path(self.install_lib) / "graffle2pdftex"
+
+        # Delete Excess & Junk Data
+        thankyousetuptools_bullshit_folder = pathlib.Path(self.install_data) / "graffle2pdftex"
+        shutil.rmtree(thankyousetuptools_bullshit_folder)
 
         # Path to the OmniGraffle Automation JS file
-        src = scriptsPath / "graffle2pdftex.omnijs"
+        src = sitePackagesPath / "graffle2pdftex.omnijs"
         dest = home_directory / "Library/Containers/com.omnigroup.OmniGraffle7/Data/Library/Application Support/Plug-Ins/"
         dest.mkdir(parents=True, exist_ok=True)
         shutil.copy(src, dest)
-        try:
-            os.remove(str(scriptsPath / "graffle2pdftex.omnijs"))
-        except Exception:
-            pass
 
 setup(
     name="graffle2pdftex",
     version="1.0.0",
     # packages=find_packages(include=['graffle2pdftex', 'graffle2pdftex.*']),
-    packages=find_packages(),
-    scripts=['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'],
-    # data_files=['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'],
+    include_package_data=True,
+    packages=[*find_packages(include=["graffle2pdftex"])],
+    # scripts=['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'],
+    data_files=[('graffle2pdftex', ['graffle2pdftex/graffle2pdftex.applescript', 'graffle2pdftex/graffle2pdftex.omnijs'])],
     cmdclass={
         'install': CustomInstall,
         'develop': CustomInstall,

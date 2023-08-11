@@ -274,7 +274,7 @@ def export(source, debug=False):
         shutil.copyfile(str(filepath), str(tmpFilepath))
         og = OmniGraffle()
         schema = og.open(str(tmpFilepath))
-        ogscriptPath = "graffle2pdftex.applescript"
+        ogscriptPath = pathlib.Path(__file__).resolve().parent / "graffle2pdftex.applescript"
         osascript.osascript(str(ogscriptPath))
         # osascript.osascript(graffle2pdftex_applescript)
 
