@@ -12,8 +12,8 @@ import tempfile as tf
 import fitz
 import runcmd
 
-# from graffle2pdftex.omnigraffle import OmniGraffle
-from omnigraffle import OmniGraffle
+from graffle2pdftex.omnigraffle import OmniGraffle
+# from omnigraffle import OmniGraffle
 
 def tempfile():
     """create temp file and return path"""
