@@ -26,202 +26,770 @@
 //      -> Update the text variable (to get rid of MathLatex/Images)
 //      -> Set the text color to new_fillColor
 function stripTextColor(obj, fillColor, text) {
-	if(typeof obj.fillColor  === 'undefined' || obj.fillColor  === null){
-		new_fillColor = fillColor
-	} else {
-		new_fillColor = obj.fillColor
-	}
+    if (typeof obj.fillColor === 'undefined' || obj.fillColor === null) {
+        new_fillColor = fillColor
+    } else {
+        new_fillColor = obj.fillColor
+    }
 
-	if(typeof obj.graphics === 'undefined'){
-		//stop recursion
-		if(typeof obj.textColor === 'undefined' || obj.textColor === null){
-		} else {
+    if (typeof obj.graphics === 'undefined') {
+        //stop recursion
+        if (typeof obj.textColor === 'undefined' || obj.textColor === null) {
+        } else {
 
-			if(typeof fillColor === 'undefined' || fillColor === null){
-			} else {
-				obj.text = obj.text
-				obj.textColor = new_fillColor
+            if (typeof fillColor === 'undefined' || fillColor === null) {
+            } else {
+                obj.text = obj.text
+                obj.textColor = new_fillColor
 
-				if(typeof text  === 'undefined' || text  === null){}
-				else {
-					obj.text = text
-				}
+                if (typeof text === 'undefined' || text === null) {
+                } else {
+                    obj.text = text
+                }
 
-			}
-		}
+            }
+        }
 
-	} else {
-		// continue recursion
-		lastElement = obj.graphics.at(-1)
-		lastElementFillColor = lastElement.fillColor
-		if(typeof lastElementFillColor === 'undefined' || lastElementFillColor === null){
-		} else {
-			new_fillColor = lastElementFillColor
-		}
+    } else {
+        // continue recursion
+        lastElement = obj.graphics.at(-1)
+        lastElementFillColor = lastElement.fillColor
+        if (typeof lastElementFillColor === 'undefined' || lastElementFillColor === null) {
+        } else {
+            new_fillColor = lastElementFillColor
+        }
 
-		for (graphic of obj.graphics) {
-			stripTextColor(graphic, new_fillColor, text)
-		}
+        for (graphic of obj.graphics) {
+            stripTextColor(graphic, new_fillColor, text)
+        }
 
-	}
+    }
 }
 
 function containsString(mainString, searchString) {
-	return mainString.toLowerCase().includes(searchString.toLowerCase());
+    return mainString.toLowerCase().includes(searchString.toLowerCase());
+}
+
+function computeBounds(points) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    points.forEach(point => {
+        if (point.x < minX) minX = point.x;
+        if (point.y < minY) minY = point.y;
+        if (point.x > maxX) maxX = point.x;
+        if (point.y > maxY) maxY = point.y;
+    });
+
+    return {
+        minimumX: minX,
+        minimumY: minY,
+        maximumX: maxX,
+        maximumY: maxY
+    };
 }
 
 function extractExtremitiesCoordinates(obj) {
-	var minimumX = Infinity;
-	var minimumY = Infinity;
-	var maximumX = -Infinity;
-	var maximumY = -Infinity;
+    var minimumX = Infinity;
+    var minimumY = Infinity;
+    var maximumX = -Infinity;
+    var maximumY = -Infinity;
 
-	function traverse(innerObj) {
-		if (innerObj.geometry) {
-			var x = innerObj.geometry.x;
-			var y = innerObj.geometry.y;
+    function traverse(innerObj) {
+        if (innerObj.shapeControlPoints) {
 
-			if (x < minimumX) {
-				minimumX = x;
-			}
+            bounds = computeBounds(innerObj.shapeControlPoints);
+            boundsMinX = bounds.minimumX;
+            boundsMaxX = bounds.maximumX;
+            boundsMinY = bounds.minimumY;
+            boundsMaxY = bounds.maximumY;
 
-			if (y < minimumY) {
-				minimumY = y;
-			}
+            if (boundsMinX < minimumX) {
+                minimumX = boundsMinX;
+            }
 
-			if (x > maximumX) {
-				maximumX = x;
-			}
+            if (boundsMinY < minimumY) {
+                minimumY = boundsMinY;
+            }
 
-			if (y > maximumY) {
-				maximumY = y;
-			}
+            if (boundsMaxX > maximumX) {
+                maximumX = boundsMaxX;
+            }
 
-		}
+            if (boundsMaxY > maximumY) {
+                maximumY = boundsMaxY;
+            }
+        }
 
-		if (innerObj.graphics) {
-			// Recurse into child graphics
-			for (var child of innerObj.graphics) {
-				traverse(child);
-			}
-		}
-	}
+        // if (innerObj.geometry) {
+        //     // var objRotation = innerObj.rotation || 0;
+        //     // rotateGraphic(innerObj, -objRotation)
+        //
+        //     var minX = innerObj.geometry.minX;
+        //     var minY = innerObj.geometry.minY;
+        //     var maxX = innerObj.geometry.maxX;
+        //     var maxY = innerObj.geometry.maxY;
+        //
+        //     if (minX < minimumX) {
+        //         minimumX = minX;
+        //     }
+        //
+        //     if (minY < minimumY) {
+        //         minimumY = minY;
+        //     }
+        //
+        //     if (maxX > maximumX) {
+        //         maximumX = maxX;
+        //     }
+        //
+        //     if (maxY > maximumY) {
+        //         maximumY = maxY;
+        //     }
+        //
+        //     // rotateGraphic(innerObj, +objRotation)
+        // }
 
-	traverse(obj);
+        if (innerObj.graphics) {
+            // Recurse into child graphics
+            for (var child of innerObj.graphics) {
+                traverse(child);
+            }
+        }
+    }
 
-	return {
-		minimumX: minimumX,
-		minimumY: minimumY,
-		maximumX: maximumX,
-		maximumY: maximumY,
-	};
+    traverse(obj);
+
+    return {
+        minimumX: minimumX,
+        minimumY: minimumY,
+        maximumX: maximumX,
+        maximumY: maximumY,
+    };
 }
+
 
 function extractCanvasSize(obj) {
-	return {height: obj.size.height, width: obj.size.width}
+    return {height: obj.size.height, width: obj.size.width}
 }
 
+// function escapeLaTeX(str) {
+//     const replacements = {
+//         "#": "\\#",
+//         "$": "\\$",
+//         "%": "\\%",
+//         "&": "\\&",
+//         "_": "\\_",
+//         "{": "\\{",
+//         "}": "\\}",
+//         "~": "\\textasciitilde",
+//         "^": "\\textasciicircum",
+//         "\\": "\\textbackslash",
+//         "<": "\\textless",
+//         ">": "\\textgreater",
+//         "|": "\\textbar"
+//     };
+//
+//     return str.replace(/[#\$%&_{}~^\\<>|]/g, char => replacements[char]);
+// }
+
+function escapeLaTeX(str) {
+    const replacements = {
+        "#": "\\#",
+        "$": "\\$",
+        "&": "\\&",
+        "%": "\\%",
+        "_": "\\_",
+        "{": "\\{",
+        "}": "\\}",
+        "\\": "\\textbackslash",
+        "~": "\\textasciitilde",
+        "^": "\\textasciicircum",
+        "<": "\\textless",
+        ">": "\\textgreater",
+        "|": "\\textbar"
+    };
+
+    let parts = str.split('!/');
+
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) { // escape the text outside of the delimiters
+            parts[i] = parts[i].replace(/[#\$%&_{}~^<>|]/g, char => replacements[char]);
+        }
+    }
+
+    return parts.join(''); // join without adding the delimiter back
+}
+
+function removeLaTeXCommands(str) {
+    let parts = str.split('!/');
+
+    let result = '';
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) { // only add the text outside of the delimiters
+            result += parts[i];
+        }
+    }
+
+    return result;
+}
+
+function measureTextWidthInOmniGraffle(text, fontName, fontSize, rotation) {
+    // Create a temporary text object on the canvas
+    const tempText = document.windows[0].selection.canvas.newShape();
+
+    // Set the text and the font for the shape
+    tempText.text = text;
+    tempText.fontName = fontName;
+    tempText.textSize = fontSize;
+
+    // Set the textFlow to full
+    tempText.autosizing = TextAutosizing.Full;
+    tempText.rotation = rotation
+
+    // Get the width of the text object
+    var width = tempText.textGeometry.width
+    var height = tempText.textGeometry.height
+
+    // var width = tempText.geometry.width
+    // var height = tempText.geometry.height
+
+    // Remove the temporary text object from the canvas
+    tempText.remove();
+
+    return {
+        width: width,
+        height: height,
+    };
+}
+
+function rotateGraphic(graphic, deltaTheta) {
+    graphic.rotation += deltaTheta;  // Update the rotation of the current graphic
+}
+
+function rotateShift(xShift, yShift, theta, mode="CCW") {
+    out = rotateAroundPoint(xShift, yShift, 0, 0, 0, 0, theta, mode)
+    return {
+        xShiftRotated: out.rotatedX,
+        yShiftRotated: out.rotatedY
+    };
+}
+
+function rotateAroundPoint(x, y, xShift, yShift, pX, pY, theta, mode="CCW") {
+    x += xShift
+    y += yShift
+
+    // Convert the angle from degrees to radians
+    let rad = (Math.PI / 180) * theta;
+
+
+    // if (theta >= 0 && theta <= 90) {
+        // Translate point to new origin (pX, pY)
+        let xTrans = x - pX;
+        let yTrans = y - pY;
+
+        var xRotated = xTrans
+        var yRotated = yTrans
+
+        if (mode === "CCW") {
+            // Rotate the point (using counter-clockwise rotation formulas)
+            xRotated = xTrans * Math.cos(rad) - yTrans * Math.sin(rad);
+            yRotated = xTrans * Math.sin(rad) + yTrans * Math.cos(rad);
+        } else if (mode === "CW") {
+            // Rotate the point (using clockwise rotation formulas)
+            xRotated = xTrans * Math.cos(rad) + yTrans * Math.sin(rad);
+            yRotated = -xTrans * Math.sin(rad) + yTrans * Math.cos(rad);
+        }
+
+        // Translate back to original coordinate system
+        let rotatedX = xRotated + pX;
+        let rotatedY = yRotated + pY;
+
+        return {
+            rotatedX: rotatedX,
+            rotatedY: rotatedY
+        };
+    // } else {
+    //
+    // }
+
+
+}
+
+
+// objRotation = canvases[0].graphics[2].rotation;
+// textRotation = canvases[0].graphics[2].textRotation;
+//
+// preModsObjGeometry = canvases[0].graphics[2].geometry
+// preModsTextGeometry = canvases[0].graphics[2].textGeometry
+//
+// canvases[0].graphics[2].rotation = 0;
+// postObjRotObjGeometry = canvases[0].graphics[2].geometry
+// postObjRotTextGeometry = canvases[0].graphics[2].textGeometry
+// canvases[0].graphics[2].rotation = objRotation;
+//
+// canvases[0].graphics[2].textRotation = 10;
+// postTextRotObjGeometry = canvases[0].graphics[2].geometry
+// postTextRotTextGeometry = canvases[0].graphics[2].textGeometry
+// canvases[0].graphics[2].textRotation = textRotation;
+//
+//
+// console.log(`Pre-Rotations: (geometry.origin.x: ${preModsObjGeometry.origin.x},
+//                                  geometry.origin.y: ${preModsObjGeometry.origin.y},
+//                                  geometry.center.x: ${preModsObjGeometry.center.x},
+//                                  geometry.center.y: ${preModsObjGeometry.center.y})`);
+// console.log(`Pre-Rotations: (geometry.width: ${preModsObjGeometry.width}, geometry.height: ${preModsObjGeometry.height})`);
+// console.log(`Post-ObjRotation: (geometry.origin.x: ${postObjRotObjGeometry.origin.x},
+//                                  geometry.origin.y: ${postObjRotObjGeometry.origin.y},
+//                                  geometry.center.x: ${postObjRotObjGeometry.center.x},
+//                                  geometry.center.y: ${postObjRotObjGeometry.center.y})`);
+// console.log(`Post-TextRotation: (geometry.origin.x: ${postTextRotObjGeometry.origin.x},
+//                                  geometry.origin.y: ${postTextRotObjGeometry.origin.y},
+//                                  geometry.center.x: ${postTextRotObjGeometry.center.x},
+//                                  geometry.center.y: ${postTextRotObjGeometry.center.y})`);
+// console.log(`Post-TextRotation: (geometry.width: ${postTextRotObjGeometry.width}, geometry.height: ${postTextRotObjGeometry.height})`);
+// console.log(`Post-ObjRotation: (geometry.width: ${postObjRotObjGeometry.width}, geometry.height: ${postObjRotObjGeometry.height})`);
+//
+//
+// console.log(`Pre-Rotations: (textGeometry.origin.x: ${preModsTextGeometry.origin.x},
+//                                  textGeometry.origin.y: ${preModsTextGeometry.origin.y},
+//                                  textGeometry.center.x: ${preModsTextGeometry.center.x},
+//                                  textGeometry.center.y: ${preModsTextGeometry.center.y})`);
+// console.log(`Pre-Rotations: (textGeometry.width: ${preModsTextGeometry.width}, textGeometry.height: ${preModsTextGeometry.height})`);
+// console.log(`Post-ObjRotation: (textGeometry.origin.x: ${postObjRotTextGeometry.origin.x},
+//                                  textGeometry.origin.y: ${postObjRotTextGeometry.origin.y},
+//                                  textGeometry.center.x: ${postObjRotTextGeometry.center.x},
+//                                  textGeometry.center.y: ${postObjRotTextGeometry.center.y})`);
+// console.log(`Post-TextRotation: (textGeometry.origin.x: ${postTextRotTextGeometry.origin.x},
+//                                  textGeometry.origin.y: ${postTextRotTextGeometry.origin.y},
+//                                  textGeometry.center.x: ${postTextRotTextGeometry.center.x},
+//                                  textGeometry.center.y: ${postTextRotTextGeometry.center.y})`);
+// console.log(`Post-ObjRotation: (textGeometry.width: ${postObjRotTextGeometry.width}, textGeometry.height: ${postObjRotTextGeometry.height})`);
+// console.log(`Post-TextRotation: (textGeometry.width: ${postTextRotTextGeometry.width}, textGeometry.height: ${postTextRotTextGeometry.height})`);
+
+
+// So object rotation does not change the object geometry (no change in origin or center)
+// So TextRotation does not change the object geometry (no change in origin or center)
+// Both object rotation and text rotation change the textGeometry's origin, but not the center
+
+// Both Object Rotation and Text Rotation change the textGeometry's width and height
+// Both Object Rotation and Text Rotation do not change the object geometry's width and height
+// Object Geometry and Text Geometry have the same center
+
+// function extractTextPositions(obj, extremities, size, aspectratio, ratio, mode) {
+//     var result = "";
+//     var minimumX = extremities.minimumX
+//     var minimumY = extremities.minimumY
+//     var maximumX = extremities.maximumX
+//     var maximumY = extremities.maximumY
+//     var width = size.width
+//     var height = size.height
+//     var permil = 1000
+//
+//     if (obj.text && obj.text.trim() !== "") {
+//         var objText = escapeLaTeX(obj.text);
+//
+//         var textGeometryX = obj.textGeometry.origin.x;
+//         var textGeometryY = obj.textGeometry.origin.y;
+//
+//         var rotation = obj.rotation || 0;
+//         rotateGraphic(obj, -rotation)
+//         var textGeometryWidth = obj.textGeometry.width;
+//         var textGeometryHeight = obj.textGeometry.height;
+//         var textHorizontalAlignment = obj.textHorizontalAlignment;
+//         rotateGraphic(obj, +rotation)
+//
+//         // Handle text rotation
+//         var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
+//
+//         var color = obj.textColor;
+//         var fontSize = obj.textSize;
+//         var fontName = obj.fontName;
+//         var useFontSize = true;
+//         // var useFontSize = false;
+//
+//         var lineHeight = fontSize * 1.5 * ratio;
+//         var isBold = fontName && containsString(fontName, "bold");
+//         var isItalic = fontName && containsString(fontName, "italic");
+//         var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
+//         var fontStringClosing = useFontSize == true ? "}" : "";
+//         var boldStringOpening = isBold == true ? `\\textbf{` : "";
+//         var boldStringClosing = isBold == true ? "}" : "";
+//         var italicStringOpening = isItalic == true ? `\\textit{` : "";
+//         var italicStringClosing = isItalic == true ? "}" : "";
+//         var lineHeightLatex = useFontSize == true ? `\\lineheight{${lineHeight}}` : "";
+//
+//         var lines = objText.split('\n');
+//         // var tabularContent = lines.map(line => line.trim()).join("\\\\");
+//
+//         var linesAmt = lines.length
+//         var heightPerLine = textGeometryHeight / linesAmt;
+//
+//         var alpha = color ? color.alpha : 1;
+//         var red = color ? color.red : 0;
+//         var green = color ? color.green : 0;
+//         var blue = color ? color.blue : 0;
+//         var rgbString = `${red},${green},${blue}`;
+//
+//         for (let i = 0; i < linesAmt; i++) {
+//             var tabularContent = lines[i].trim();
+//             var lineSize = measureTextWidthInOmniGraffle(tabularContent, fontName, fontSize, 0);
+//             var lineWidth = lineSize.width
+//             var lineOriginX = textGeometryX
+//             var lineOriginY = textGeometryY
+//
+//             if (textHorizontalAlignment === HorizontalTextAlignment.Left) {
+//                 var xShift = 0
+//             } else if (textHorizontalAlignment === HorizontalTextAlignment.Center) {
+//                 var xShift = (textGeometryWidth / 2) - (lineWidth / 2);
+//             } else if (textHorizontalAlignment === HorizontalTextAlignment.Right) {
+//                 var xShift = textGeometryWidth - lineWidth;
+//             }
+//
+//             if (containsString(tabularContent, "*2")) {
+//                 console.log(xShift);
+//                 console.log("OriginX: " + lineOriginX);
+//             }
+//
+//             var yShift = + ((i + 1) * heightPerLine);
+//
+//             angled_shifts = rotateShift(xShift, yShift, rotation)
+//             xShiftRotated = angled_shifts.xShiftRotated
+//             yShiftRotated = angled_shifts.yShiftRotated
+//
+//             // console.log(`${tabularContent} at (${((lineOriginX - minimumX) / width) * ratio * 100}, ${((lineOriginY + minimumY) / height) * ratio * aspectratio * 100}) shifted by (${xShift/width*ratio * 100}, ${yShift/height*ratio*aspectratio * 100})`)
+//             console.log(`${tabularContent} at (${(lineOriginX) * ratio}, ${lineOriginY * ratio}) shifted by (${xShift}, ${yShift})`)
+//
+//             var x = lineOriginX + xShift
+//             var y = lineOriginY + yShiftRotated
+//
+//             // Reset position w.r.t new origin point
+//             x = x - minimumX
+//             y = y - minimumY
+//
+//             // Multiply coordinates by ratio and aspectratio
+//             x = (x/width) * ratio
+//             y = (y/height) * ratio * aspectratio
+//
+//             // Invert the Y coordinates
+//             y = (height/height * ratio * aspectratio) - y
+//
+//             if (mode.toLowerCase() === "overpic") {
+//                 x = x * permil;
+//                 y = y * permil;
+//             }
+//
+//             // Create the LaTeX \put command for each line
+//             var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{${lineHeightLatex}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
+//             result += command;
+//
+//         }
+//
+//     }
+//
+//     if (obj.graphics) {
+//         // Recurse into child graphics
+//         for (child of obj.graphics) {
+//             result += extractTextPositions(child, extremities, size, aspectratio, ratio, mode);
+//         }
+//     }
+//
+//     return result;
+// }
 
 function extractTextPositions(obj, extremities, size, aspectratio, ratio, mode) {
-	var result = "";
-	var minimumX = extremities.minimumX
-	var minimumY = extremities.minimumY
-	var maximumX = extremities.maximumX
-	var maximumY = extremities.maximumY
-	var width = size.width
-	var height = size.height
-	var permil = 1000
+    var result = "";
+    var minimumX = extremities.minimumX
+    var minimumY = extremities.minimumY
+    var maximumX = extremities.maximumX
+    var maximumY = extremities.maximumY
+    var canvasWidth = size.width
+    var canvasHeight = size.height
+    var permil = 1000
 
-	if (obj.text && obj.text.trim() !== "") {
-		var objText = obj.text + "";
-		var textGeometryX = obj.textGeometry.origin.x;
-		var textGeometryY = obj.textGeometry.origin.y;
-		var textGeometryWidth = obj.textGeometry.width;
-		var textGeometryHeight = obj.textGeometry.height;
+    var displayText = null
+    if (obj.userData && "Text" in obj.userData && obj.userData["Text"] && obj.userData["Text"].trim() != "") {
+        displayText = escapeLaTeX(obj.userData["Text"]);
+    }
 
-		// Invert the Y coordinate
-		var invertedY = height - textGeometryY;
+    if (obj.text && obj.text.trim() !== "") {
+        objText = escapeLaTeX(obj.text);
 
-		// Handle text rotation
-		var rotation = obj.rotation || 0;
-		var rotateString = rotation !== 0 ? `\\rotatebox{${-rotation}}{` : "";
+        if (!displayText) {
+            displayText = objText
+        }
 
-		var color = obj.textColor;
-		var fontSize = obj.textSize;
-		var fontName = obj.fontName;
-		var useFontSize = true;
-		// var useFontSize = false;
+        var objRotation = obj.rotation || 0;
 
-		var lineHeight = fontSize * 1.5 * ratio;
-		var isBold = fontName && containsString(fontName, "bold");
-		var isItalic = fontName && containsString(fontName, "italic");
-		var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
-		var fontStringClosing = useFontSize == true ? "}" : "";
-		var boldStringOpening = isBold == true ? `\\textbf{` : "";
-		var boldStringClosing = isBold == true ? "}" : "";
-		var italicStringOpening = isItalic == true ? `\\textit{` : "";
-		var italicStringClosing = isItalic == true ? "}" : "";
-		var lineHeightLatex = useFontSize == true ? `\\lineheight{${lineHeight}}` : "";
+        // if (containsString(objText, "Encoder Blocks")) {
+        //     console.log(objText)
+        //     console.log("objRotation: " + objRotation)
+        //     // objRotation = 90
+        //     // console.log("new objRotation: " + objRotation)
+        //
+        // }
 
-		var xSpacingWidthRatio = useFontSize == false ? 0.2 : 0.0;
-		var ySpacingWidthRatio = rotation !== 0 ? (useFontSize == false ? 0.3 : 0.0) : .8;
+        // For the center, it doesn't matter which we use. Centers aren't affected by either transformation
+        var textCenterX = obj.textGeometry.center.x;
+        var textCenterY = obj.textGeometry.center.y;
 
-		var x = ((textGeometryX - minimumX + xSpacingWidthRatio * textGeometryWidth) / width) * ratio;
-		var y = ((invertedY + minimumY - ySpacingWidthRatio * textGeometryHeight) / height) * ratio * aspectratio;
+        var bboxCenterX = obj.geometry.center.x;
+        var bboxCenterY = obj.geometry.center.y;
 
-		if (mode.toLowerCase() === "overpic") {
-			x = x * permil;
-			y = y * permil;
-		}
+        var bboxOriginX0Deg = obj.geometry.origin.x;
+        var bboxOriginY0Deg = obj.geometry.origin.y;
+        var bboxWidth0Deg = obj.geometry.width;
+        var bboxHeight0Deg = obj.geometry.height;
+        var bboxEndX0Deg = obj.geometry.origin.x + bboxWidth0Deg;
+        var bboxEndY0Deg = obj.geometry.origin.y + bboxHeight0Deg;
 
-		var alpha = color ? color.alpha : 1;
-		var red = color ? color.red : 0;
-		var green = color ? color.green : 0;
-		var blue = color ? color.blue : 0;
-		var rgbString = `${red},${green},${blue}`;
+        var bboxOriginRot = rotateAroundPoint(
+            bboxOriginX0Deg,
+            bboxOriginY0Deg,
+            0,
+            0,
+            bboxCenterX,
+            bboxCenterY,
+            objRotation,                 // objRotation angle
+            "CCW",
+            // -objRotation,
+            // "CW",
+        );
+        var bboxEndRot = rotateAroundPoint(
+            bboxEndX0Deg,
+            bboxEndY0Deg,
+            0,
+            0,
+            bboxCenterX,
+            bboxCenterY,
+            objRotation,                 // objRotation angle
+            "CCW",
+            // -objRotation,
+            // "CW",
+        );
+        var bboxOriginX = bboxOriginRot.rotatedX
+        var bboxOriginY = bboxOriginRot.rotatedY
+        var bboxEndX = bboxEndRot.rotatedX
+        var bboxEndY = bboxEndRot.rotatedY
+        var bboxWidth = bboxEndX - bboxOriginX
+        var bboxHeight = bboxEndY - bboxOriginY
 
-		var lines = objText.split('\n');
-		var tabularContent = lines.map(line => line.trim()).join("\\\\");
+        var textOriginX = obj.textGeometry.origin.x;
+        var textOriginY = obj.textGeometry.origin.y;
+        var textWidth = obj.textGeometry.width;
+        var textHeight = obj.textGeometry.height;
+        rotateGraphic(obj, -objRotation)
+        var textHorizontalAlignment = obj.textHorizontalAlignment;
+        var textOriginX0Deg = obj.textGeometry.origin.x;
+        var textOriginY0Deg = obj.textGeometry.origin.y;
+        var textWidth0Deg = obj.textGeometry.width;
+        var textHeight0Deg = obj.textGeometry.height;
+        rotateGraphic(obj, +objRotation)
 
-		// Create the LaTeX \put command
-		var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{${lineHeightLatex}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${rotation !== 0 ? "}" : ""}%\n`;
-		result += command;
 
-	}
+        // Handle text objRotation
+        var rotateString = objRotation !== 0 ? `\\rotatebox{${-objRotation}}{` : "";
 
-	if (obj.graphics) {
-		// Recurse into child graphics
-		for (child of obj.graphics) {
-			result += extractTextPositions(child, extremities, size, aspectratio, ratio, mode);
-		}
-	}
+        var color = obj.textColor;
+        var fontSize = obj.textSize;
+        var fontName = obj.fontName;
+        var useFontSize = true;
+        // var useFontSize = false;
 
-	return result;
+        var lineHeight = fontSize * 1.5 * ratio;
+        var isBold = fontName && containsString(fontName, "bold");
+        var isItalic = fontName && containsString(fontName, "italic");
+        var fontStringOpening = useFontSize == true ? `{\\fontsize{${fontSize}}{${fontSize}}\\selectfont` : "";
+        var fontStringClosing = useFontSize == true ? "}" : "";
+        var boldStringOpening = isBold == true ? `\\textbf{` : "";
+        var boldStringClosing = isBold == true ? "}" : "";
+        var italicStringOpening = isItalic == true ? `\\textit{` : "";
+        var italicStringClosing = isItalic == true ? "}" : "";
+        var lineHeightLatex = useFontSize == true ? `\\lineheight{${lineHeight}}` : "";
+
+        var alpha = color ? color.alpha : 1;
+        var red = color ? color.red : 0;
+        var green = color ? color.green : 0;
+        var blue = color ? color.blue : 0;
+        var rgbString = `${red},${green},${blue}`;
+
+
+        // WORKING
+        // var originMode = "text0Deg"
+        // var centerMode = "bbox"
+        // var dimensionsMode = "text0Deg"
+
+        // WORKING
+        var originMode = "text0Deg"
+        var centerMode = "text"
+        var dimensionsMode = "text0Deg"
+
+        // NOT WORKING
+        // var originMode = "bbox"
+        // var centerMode = "bbox"
+        // var dimensionsMode = "text0Deg"
+
+
+        // NOT WORKING
+        // var originMode = "bbox"
+        // var centerMode = "bbox"
+        // var dimensionsMode = "bbox"
+
+        if (originMode === "bbox0Deg") {
+            var originX = bboxOriginX0Deg
+            var originY = bboxOriginY0Deg
+        } else if (originMode === "bbox") {
+            var originX = bboxOriginX
+            var originY = bboxOriginY
+        } else if (originMode === "text") {
+            var originX = textOriginX
+            var originY = textOriginY
+        } else if (originMode === "text0Deg") {
+            var originX = textOriginX0Deg
+            var originY = textOriginY0Deg
+        }
+
+        if (centerMode === "bbox") {
+            var centerX = bboxCenterX
+            var centerY = bboxCenterY
+        } else if (centerMode === "text") {
+            var centerX = textCenterX
+            var centerY = textCenterY
+        }
+
+        if (dimensionsMode === "bbox0Deg") {
+            var width = bboxWidth0Deg
+            var height = bboxHeight0Deg
+        } else if (dimensionsMode === "bbox") {
+            var width = bboxWidth
+            var height = bboxHeight
+        } else if (dimensionsMode === "text") {
+            var width = textWidth
+            var height = textHeight
+        } else if (dimensionsMode === "text0Deg") {
+            var width = textWidth0Deg
+            var height = textHeight0Deg
+        }
+
+        var lines = objText.split('\n');
+        var linesAmt = lines.length
+        var heightPerLine = height / linesAmt;
+
+        var displayLines = displayText.split('\n');
+
+
+        // var lineWidth = 0
+        // for (let i = 0; i < linesAmt; i++) {
+        //     lineWidth_ = measureTextWidthInOmniGraffle(lines[i].trim(), fontName, fontSize, 0).width
+        //     if (lineWidth_ > lineWidth) {
+        //         lineWidth = lineWidth_
+        //     }
+        // }
+
+        for (let i = 0; i < linesAmt; i++) {
+            var tabularContent = lines[i].trim();
+            var lineSize = measureTextWidthInOmniGraffle(tabularContent, fontName, fontSize, 0);
+            var lineWidth = lineSize.width
+
+            tabularContent = displayLines[i].trim();
+
+            if (textHorizontalAlignment === HorizontalTextAlignment.Left) {
+                var xShift = 0
+            } else if (textHorizontalAlignment === HorizontalTextAlignment.Center) {
+                var xShift = (width / 2) - (lineWidth / 2);
+            } else if (textHorizontalAlignment === HorizontalTextAlignment.Right) {
+                var xShift = width - lineWidth;
+            }
+
+
+            if (objRotation >= 0 && objRotation <= 90) {
+                var yShift = ((i + 1) * heightPerLine);
+            } else {
+                var yShift = -.35 * heightPerLine + ((i + 1) * heightPerLine);
+            }
+
+            // xShift = 0
+
+            var rotatedPoint = rotateAroundPoint(
+                originX,  // unrotated x position
+                originY,  // unrotated y position
+                xShift,
+                yShift,
+                centerX,           // text box's x origin
+                centerY,           // text box's y origin
+                objRotation,                 // objRotation angle
+                "CCW",
+                // -objRotation,
+                // "CW",
+            );
+
+            var x = rotatedPoint.rotatedX
+            var y = rotatedPoint.rotatedY
+
+            // Reset position w.r.t new origin point
+            x = x - minimumX
+            y = y - minimumY
+
+            // Multiply coordinates by ratio and aspectratio
+            x = (x/canvasWidth) * ratio
+            y = (y/canvasHeight) * ratio * aspectratio
+
+            // Invert the Y coordinates
+            y = (canvasHeight/canvasHeight * ratio * aspectratio) - y
+
+            if (mode.toLowerCase() === "overpic") {
+                x = x * permil;
+                y = y * permil;
+            }
+
+            // Create the LaTeX \put command for each line
+            var command = `\\put(${x},${y}){\\color[rgb]{${rgbString}}${rotateString}\\makebox(0,0)[lt]{${lineHeightLatex}\\smash{${fontStringOpening}${boldStringOpening}${italicStringOpening}\\begin{tabular}[t]{l}${tabularContent}\\end{tabular}}}${italicStringClosing}${boldStringClosing}${fontStringClosing}}${objRotation !== 0 ? "}" : ""}%\n`;
+            result += command;
+
+        }
+
+    }
+
+    if (obj.graphics) {
+        // Recurse into child graphics
+        for (child of obj.graphics) {
+            result += extractTextPositions(child, extremities, size, aspectratio, ratio, mode);
+        }
+    }
+
+    return result;
 }
 
-function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio){
-	var canvasSize = extractCanvasSize(canvas)
-	var canvasExtremities = extractExtremitiesCoordinates(canvas)
-	var canvasSizeLatex = {height: canvasSize.height*ratio, width: canvasSize.width*ratio}
-	var aspectratio = canvasSizeLatex.height/canvasSizeLatex.width
-	extractedPictureText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio, "picture");
-	extractedOverpicText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio, "overpic");
+function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio) {
+    var canvasSize = extractCanvasSize(canvas)
+    var canvasExtremities = extractExtremitiesCoordinates(canvas)
 
-	// 2. Export the figure without text to a PDF
-	// Loops over all canvases and strips text color for each of the canvases
-	stripTextColor(canvas, Color.RGB(1,1,1,1))
+    var canvasSizeLatex = {height: canvasSize.height * ratio, width: canvasSize.width * ratio}
+    var aspectratio = canvasSizeLatex.height / canvasSizeLatex.width
 
-	if(typeof canvas_name === 'undefined' || canvas_name === null){
-		var pdfFilename_c = pdfFilename_
-		var pdfTexFilename_c = pdfTexFilename_
-	} else {
-		var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
-		var pdfTexFilename_c = pdfTexFilename_.replace(".pdf_tex.tex", `_${canvas_name}.pdf_tex.tex`)
-	}
-	var PDFwrapperPromise = document.makeFileWrapper(pdfFilename_c, "com.adobe.pdf")
 
-	// 3. Create a new .pdf_tex file
-	var pdfTexPictureContent = `
+    console.log("Minimum X: " + canvasExtremities.minimumX)
+    console.log("Minimum Y: " + canvasExtremities.minimumY)
+    // canvasExtremities.minimumX = 0
+    extractedPictureText = ""
+    extractedOverpicText = extractTextPositions(canvas, canvasExtremities, canvasSize, aspectratio, ratio, "overpic");
+
+    // 2. Export the figure without text to a PDF
+    // Loops over all canvases and strips text color for each of the canvases
+    stripTextColor(canvas, Color.RGB(1, 1, 1, 1))
+
+    if (typeof canvas_name === 'undefined' || canvas_name === null) {
+        var pdfFilename_c = pdfFilename_
+        var pdfTexFilename_c = pdfTexFilename_
+    } else {
+        var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
+        var pdfTexFilename_c = pdfTexFilename_.replace(".pdf_tex.tex", `_${canvas_name}.pdf_tex.tex`)
+    }
+    var PDFwrapperPromise = document.makeFileWrapper(pdfFilename_c, "com.adobe.pdf")
+
+    // 3. Create a new .pdf_tex file
+    var pdfTexPictureContent = `
 %% Creator: Peter El-Jiz
 %% OmniGraffle -> PDF_Tex adapted from
 %% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
@@ -284,8 +852,8 @@ function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio
 \\endgroup%
 `
 
-	// 3. Create a new .pdf_tex file
-	var pdfTexOverpicContent = `
+    // 3. Create a new .pdf_tex file
+    var pdfTexOverpicContent = `
 %% Creator: Peter El-Jiz
 %% OmniGraffle -> PDF_Tex adapted from
 %% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
@@ -339,76 +907,76 @@ function processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio
   \\global\\let\\svgwidth\\undefined%
   \\global\\let\\svgscale\\undefined%
   \\makeatother%
-  \\begin{overpic}[width=\\unitlength,permil,tics=100]{${pdfFilename_}/${pdfFilename_c}}}
+  \\begin{overpic}[width=\\unitlength,permil,tics=100]{${pdfFilename_}/${pdfFilename_c}}
     \\lineheight{1}%
     \\setlength\\tabcolsep{0pt}%
 	${extractedOverpicText}	
-  \\end{picture}%
+  \\end{overpic}%
 \\endgroup%
 `
-	var pdfTexWrapper = FileWrapper.withContents(pdfTexFilename_c, Data.fromString(pdfTexOverpicContent));
+    var pdfTexWrapper = FileWrapper.withContents(pdfTexFilename_c, Data.fromString(pdfTexOverpicContent));
 
-	out = {
-		PDFwrapperPromise: PDFwrapperPromise,
-		pdfTexWrapper: pdfTexWrapper,
-	}
+    out = {
+        PDFwrapperPromise: PDFwrapperPromise,
+        pdfTexWrapper: pdfTexWrapper,
+    }
 
-	return out;
+    return out;
 
 }
 
 (() => {
-	var action = new PlugIn.Action(async function(selection) {
-		var fileName = document.name;
-		var pdfFilename_ = fileName.toString().replace(/\.graffle$/, "");
-		var pdfTexFilename_ = fileName.toString().replace(/\.graffle$/, ".pdf_tex.tex");
+    var action = new PlugIn.Action(async function (selection) {
+        var fileName = document.name;
+        var pdfFilename_ = fileName.toString().replace(/\.graffle$/, "");
+        var pdfTexFilename_ = fileName.toString().replace(/\.graffle$/, ".pdf_tex.tex");
 
-		// As LaTex uses big points, we have to multiply the dimensions by the ratio: 72.27/72
-		var ratio = 72.27/72
+        // As LaTex uses big points, we have to multiply the dimensions by the ratio: 72.27/72
+        var ratio = 72.27 / 72
 
-		// 1. Extract Text Positions from the document with text
-		var extractedText = "";
-		// Iterate through the canvases and extract text positions
-		var promises = Array()
+        // 1. Extract Text Positions from the document with text
+        var extractedText = "";
+        // Iterate through the canvases and extract text positions
+        var promises = Array()
 
-		var canvasesLen = canvases.length;
-		var canvas = document.windows[0].selection.canvas
-		var canvas_name = null
-		if (canvasesLen > 1) {
-			canvas_name = canvas.name
-		}
+        var canvasesLen = canvases.length;
+        var canvas = document.windows[0].selection.canvas
+        var canvas_name = null
+        if (canvasesLen > 1) {
+            canvas_name = canvas.name
+        }
 
-		if(typeof canvas_name === 'undefined' || canvas_name === null){
-			var pdfFilename_c = pdfFilename_
-		} else {
-			var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
-		}
+        if (typeof canvas_name === 'undefined' || canvas_name === null) {
+            var pdfFilename_c = pdfFilename_
+        } else {
+            var pdfFilename_c = `${pdfFilename_}_${canvas_name}`
+        }
 
-		output = processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio)
-		promises.push(output.PDFwrapperPromise)
-		promises.push(output.pdfTexWrapper)
+        output = processCanvas(pdfFilename_, pdfTexFilename_, canvas, canvas_name, ratio)
+        promises.push(output.PDFwrapperPromise)
+        promises.push(output.pdfTexWrapper)
 
-		Promise.all(promises).then(fileWrappers => {
-			// Create and Show File Saver
-			var filesaver = new FileSaver()
-			filesaver.types = [new FileType("public.folder"), new FileType("public.txt"), FileType.pdf]
-			var fldrwrapper = FileWrapper.withChildren(`${pdfFilename_c}`, fileWrappers)
-			var fileSaverPromise = filesaver.show(fldrwrapper)
+        Promise.all(promises).then(fileWrappers => {
+            // Create and Show File Saver
+            var filesaver = new FileSaver()
+            filesaver.types = [new FileType("public.folder"), new FileType("public.txt"), FileType.pdf]
+            var fldrwrapper = FileWrapper.withChildren(`${pdfFilename_c}`, fileWrappers)
+            var fileSaverPromise = filesaver.show(fldrwrapper)
 
-			// Process File Saver Result
-			fileSaverPromise.then(urlObj => {
-				console.log(urlObj.string)
-			})
+            // Process File Saver Result
+            fileSaverPromise.then(urlObj => {
+                console.log(urlObj.string)
+            })
 
-			fileSaverPromise.catch(err => {
-				console.log(err.message)
-			})
+            fileSaverPromise.catch(err => {
+                console.log(err.message)
+            })
 
-		}).catch(err => {
-			console.log("Error", err.message)
-		})
+        }).catch(err => {
+            console.log("Error", err.message)
+        })
 
-});
+    });
 
-	return action;
+    return action;
 })();
