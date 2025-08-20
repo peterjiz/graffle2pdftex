@@ -3,6 +3,26 @@ Graffle To PDF_Tex
 
 A command line tool that exports OmniGraffle figures to PDF_Tex
 
+Uses a combination of python, applescript, and omnijs to get it all working together.
+
+OmniJS Script:
+- Change all text color to underlying element's background color (so as to make the text invisible and preserve the rendered figure)
+- Export a PDF with the now-invisible text (using native OmniGraffle functionality)
+- Extract all text information & text box geometry (position, orientation, rotation, scale, etc...), convert to expected .tex format, and create .tex file.
+
+AppleScript:
+- Launch OmniGraffle
+- Temporarily clone the document 
+- Loop through each Canvas
+- Run the OmniJS script
+
+Python:
+- Orchestrator
+- Make calls to AppleScript
+- Extra PDF Cleanup (redact invisible text)
+- Overall cleanup
+
+
 Installation
 ------------
 
